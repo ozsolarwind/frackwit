@@ -20,6 +20,7 @@
 #
 
 import configparser  # decode .ini file
+import io
 from math import sin, cos, radians, asin, acos, atan2, sqrt, degrees, pi
 import os
 import sys
@@ -27,7 +28,6 @@ import tkinter as tk
 from tkinter import colorchooser
 from tkinter import filedialog
 from tkinter import ttk
-import webbrowser
 from xml.etree.ElementTree import ElementTree, fromstring
 import zipfile
 
@@ -490,10 +490,29 @@ def create_grid():
     area_top_left = [None, None]
     area_bot_right = [None, None]
     cells = [0, 0]
-    kml_data = open(kml_file, 'rb')
-    root = ElementTree(fromstring(kml_data.read()))
+    area_coords = None
+    zipped = False
+    if kml_file[-4:] == '.kmz': # zipped file?
+        zipped = True
+        zf = zipfile.ZipFile(kml_file, 'r')
+        inner_file = ''
+        for name in zf.namelist():
+            if name[-4:] == '.kml':
+                inner_file = name
+                break
+        if inner_file == '':
+            return
+        memory_file = io.BytesIO()
+        memory_file.write(zf.open(inner_file).read())
+        root = ElementTree(fromstring(memory_file.getvalue()))
+    else:
+        kml_data = open(kml_file, 'rb')
+        root = ElementTree(fromstring(kml_data.read()))
      # Create an iterator
-    iterat = root.iter()
+    if sys.version_info[1] < 9: # before python 3.9
+        iterat = root.getiterator()
+    else:
+        iterat = root.iter()
     for element in iterat:
         elem = element.tag[element.tag.find('}') + 1:]
         if elem == 'coordinates':
@@ -502,6 +521,18 @@ def create_grid():
             for i in range(len(coordinates)):
                 area_coords.append([round(float(coordinates[i].split(',')[1]), 6),
                   round(float(coordinates[i].split(',')[0]), 6)])
+    if zipped:
+        memory_file.close()
+        zf.close()
+    else:
+        kml_data.close()
+    if area_coords is None:
+        msg_widget.config(fg='red')
+        msg = tgt_name + ' coordinates not found in ' + kml_file
+        msg = msg.strip()
+        msg = msg[:60] + '\n' + msg[60:120] + '\n' + msg[120:]
+        msg_var.set(msg)
+        return
     for coord in area_coords:
         for i in range(2):
             if area_top_left[i] is None:
