@@ -18,6 +18,9 @@ o  Area of Interest: A KML (Google Earth) file with a LineString defining the ar
    examined. This is the input file and is required. To change the file click the 'Change'
    button
    
+o  Named Area: Choose a particular named area (Placemark) from a file with many areas 
+   (sets of coordinates). If left empty the first set of coordinates is chosen
+   
 o  Initial roads/track: A KML file with a number of LineStrings defining existing
    tracks/roads that the fracking grid can connect to. This field is optional but helps to
    provide some variability to the network of roads/tracks produced. To change the file
