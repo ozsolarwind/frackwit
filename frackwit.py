@@ -461,6 +461,7 @@ def create_grid():
         msg_widget.config(fg='red')
         msg_var.set(kml_file + ' not found')
         return
+    tgt_name = tgt_var.get()
     trk_file = trk_var.get()
     if trk_file != '':
         if not os.path.exists(trk_file):
@@ -513,14 +514,32 @@ def create_grid():
         iterat = root.getiterator()
     else:
         iterat = root.iter()
+    do_coords = False
     for element in iterat:
         elem = element.tag[element.tag.find('}') + 1:]
-        if elem == 'coordinates':
+        if tgt_name != '':
+            if elem == 'name':
+                name = element.text.strip()
+            elif elem == 'Placemark':
+                try:
+                    name = element[id]
+                except:
+                    pass
+        if elem == 'Point':
+            do_coords = False
+        elif elem == 'LineString' or elem == 'LinearRing':
+            do_coords = True
+        elif elem == 'coordinates':
+            if not do_coords:
+                continue
+            if tgt_name != '' and name != tgt_name:
+                continue
             area_coords = []
             coordinates = ' '.join(element.text.split()).split()
             for i in range(len(coordinates)):
                 area_coords.append([round(float(coordinates[i].split(',')[1]), 6),
                   round(float(coordinates[i].split(',')[0]), 6)])
+            break
     if zipped:
         memory_file.close()
         zf.close()
@@ -548,6 +567,10 @@ def create_grid():
     cells[1] = int(ew_distance / (pad_spacing_in_m[1] / 1000.))
     cells[0] = int(ns_distance / (pad_spacing_in_m[0] / 1000.))
     max_no_of_pads = cells[0] * cells[1]
+    if max_no_of_pads == 0:
+        msg_widget.config(fg='red')
+        msg_var.set('Chosen area too small')
+        return
     if no_of_wells == 0:
         no_of_wells = max_no_of_pads * wells_per_pad
     else:
@@ -660,7 +683,11 @@ def create_grid():
         i = kml_file.rfind('/')
     else:
         i = kml_file.rfind('/')
-    kml_out = kml_file[:i + 1] + out_prefix + kml_file.lower()[i + 1:-4] + out_suffix + '.kml'
+    kml_out = kml_file[:i + 1] + out_prefix + kml_file.lower()[i + 1:-4]
+    if tgt_name != '':
+        if kml_out.find(tgt_name.lower()) < 0 and out_suffix.lower() != tgt_name.lower():
+            kml_out += '_' + tgt_name.lower()
+    kml_out += out_suffix + '.kml'
     k_file = open(kml_out, 'w')
     for line in pline:
         k_file.write(line + '\n')
@@ -681,7 +708,7 @@ def create_grid():
         if os.path.exists(ini_file):
             os.rename(ini_file, ini_file + '~')
     sou = open(ini_file, 'w')
-    lines = '[Variables]\nkml_file={}\npad_area_in_sqm={:d}\nwells_per_pad={:d}\nout_prefix={}\npad_spacing_in_m={:d},{:d}\nout_suffix={}\ntrk_file={}\nno_of_wells={:d}\nminor_road_width_in_m={:d}\ntrk_colour={}\npad_colour={}'.format(kml_file, pad_area_in_sqm, wells_per_pad, out_prefix.strip('_'), pad_spacing_in_m[0], pad_spacing_in_m[1], out_suffix.strip('_'), trk_file,
+    lines = '[Variables]\nkml_file={}\ntgt_name={}\npad_area_in_sqm={:d}\nwells_per_pad={:d}\nout_prefix={}\npad_spacing_in_m={:d},{:d}\nout_suffix={}\ntrk_file={}\nno_of_wells={:d}\nminor_road_width_in_m={:d}\ntrk_colour={}\npad_colour={}'.format(kml_file, tgt_name, pad_area_in_sqm, wells_per_pad, out_prefix.strip('_'), pad_spacing_in_m[0], pad_spacing_in_m[1], out_suffix.strip('_'), trk_file,
        no_of_wells, minor_road_width_in_m, trk_colr.get(), pad_colr.get())
     sou.write(lines)
     sou.close()
@@ -696,6 +723,7 @@ pad_area_in_sqm = 15000
 wells_per_pad = 1
 no_of_wells = 0
 kml_file = 'area.kml'
+tgt_name = ''
 trk_file = 'tracks.kml'
 out_prefix = 'fracking_grid'
 out_suffix = ''
@@ -716,6 +744,8 @@ if os.path.exists(config_file):
     for key, value in items:
         if key == 'kml_file':
              kml_file = value
+        elif key == 'tgt_name':
+             tgt_name = value
         elif key == 'trk_file':
              trk_file = value
         elif key == 'pad_spacing_in_m':
@@ -769,6 +799,13 @@ b1 = tk.Button(window, text='Change', command=get_kml_file)
 b1.grid(row=row, column=3)
 row += 1
 tk.Label(window, text='(KML file with single LineString)').grid(row=row, column=1, sticky=tk.W, padx=5)
+row += 1
+tk.Label(window, text='Named Area:').grid(row=row, sticky=tk.W, padx=5, pady=5)
+tgt_var = tk.StringVar()
+tgt_var.set(tgt_name)
+tgt_widget = tk.Entry(window, textvariable=tgt_var)
+tgt_widget.grid(row=row, column=1, columnspan=3, sticky=tk.W, padx=5, pady=5)
+tk.Label(window, text='(Case sensitive)').grid(row=row, column=2, sticky=tk.W, padx=5, pady=5)
 row += 1
 tk.Label(window, text='Initial roads/tracks:').grid(row=row, sticky=tk.W, padx=5, pady=5)
 trk_var = tk.StringVar()
