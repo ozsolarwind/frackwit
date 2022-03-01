@@ -3,7 +3,7 @@
 FrackWIT
 ========
 
-(C) Copyright 2022 Angus King. angus.king@iinet.net.au
+(C) Copyright 2022 Angus King
 
 FrackWIT is a program to generate a theoretical grid of fracking wellheads. It's aim is to
 help visualise the impact of such a grid on the landscape. This is a very early prototype.
